@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "audit_logs")
 @Getter
 @Setter
+
 public class AuditLog {
 
     @Id
@@ -18,5 +19,10 @@ public class AuditLog {
     private String userId;
     private String action;
     private String requestPath;
+
+    private Integer httpStatus;
+    private String ipAddress;
+    private Long executionTime;
+
     private LocalDateTime timestamp;
 }

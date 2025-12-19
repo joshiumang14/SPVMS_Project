@@ -21,13 +21,31 @@ public class AuditInterceptor implements HandlerInterceptor {
                              HttpServletResponse response,
                              Object handler) {
 
+        request.setAttribute("startTime", System.currentTimeMillis());
+        return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request,
+                                HttpServletResponse response,
+                                Object handler,
+                                Exception ex) {
+
+        long startTime = (long) request.getAttribute("startTime");
+        long executionTime = System.currentTimeMillis() - startTime;
+
         AuditLog log = new AuditLog();
-        log.setUserId("SYSTEM");
+        log.setUserId(request.getHeader("userId") != null
+                ? request.getHeader("userId")
+                : "SYSTEM");
+
         log.setAction(request.getMethod());
         log.setRequestPath(request.getRequestURI());
+        log.setHttpStatus(response.getStatus());
+        log.setIpAddress(request.getRemoteAddr());
+        log.setExecutionTime(executionTime);
         log.setTimestamp(LocalDateTime.now());
 
         auditRepo.save(log);
-        return true;
     }
 }
