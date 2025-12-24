@@ -10,23 +10,30 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-@EnableScheduling
 public class VendorScoreScheduler {
 
-    @Autowired
-    private VendorRepository repo;
+    private final VendorRepository repo;
 
+    public VendorScoreScheduler(VendorRepository repo) {
+        this.repo = repo;
+    }
+
+    // Runs every hour
     @Scheduled(cron = "0 0 * * * ?")
     public void updateVendorScores() {
+
         List<Vendor> vendors = repo.findAll();
 
         for (Vendor v : vendors) {
-            double score =
-                    (v.getDeliveryRate() * 0.4) +
-                            (v.getQualityRating() * 0.4) +
-                            (v.getPriceScore() * 0.2);
+            double delivery = v.getDeliveryRate() != null ? v.getDeliveryRate() : 0;
+            double quality  = v.getQualityRating() != null ? v.getQualityRating() : 0;
+            double price    = v.getPriceScore() != null ? v.getPriceScore() : 0;
+
+            double score = (delivery * 0.4) + (quality * 0.4) + (price * 0.2);
             v.setPerformanceScore(score);
-            repo.save(v);
         }
+
+        // single DB hit (optimized)
+        repo.saveAll(vendors);
     }
 }

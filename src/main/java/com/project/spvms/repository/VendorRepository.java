@@ -10,4 +10,8 @@ public interface VendorRepository extends JpaRepository<Vendor, Long> {
 
     @Query("SELECT v FROM Vendor v ORDER BY v.performanceScore DESC")
     List<Vendor> findTopVendors();
+
+    // Top performing vendors
+    @Query("SELECT v FROM Vendor v ORDER BY v.performanceScore DESC")
+    List<Vendor> findTopPerformingVendors();
 }

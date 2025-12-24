@@ -23,4 +23,7 @@ public class Vendor {
     private Double priceScore;
 
     private Double performanceScore;
+
+
+
 }
