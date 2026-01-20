@@ -1,9 +1,13 @@
 package com.project.spvms.entity;
 
 import jakarta.persistence.*;
-
 @Entity
-@Table(name = "budgets")
+@Table(
+        name = "budgets",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "cost_center")
+        }
+)
 public class Budget {
 
     @Id

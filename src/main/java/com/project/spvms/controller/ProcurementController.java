@@ -12,26 +12,22 @@ public class ProcurementController {
     @Autowired
     private ProcurementService procurementService;
 
-    // ✅ Existing endpoint (ID-based)
+    //  Submit PR using Vendor ID
     @PostMapping("/submit/{vendorId}")
-    public String submitPR(@PathVariable Long vendorId) {
+    public String submitPR(@PathVariable Long vendorId,
+                           @RequestBody ProcurementRequest pr) {
 
-        ProcurementRequest pr = new ProcurementRequest();
-        pr.setId(3001L);
-        pr.setStatus("SUBMITTED");
-
+        //  NO pr.setId()
         procurementService.submitPR(vendorId, pr);
         return "PR submitted using vendor ID";
     }
 
-    // ✅ NEW endpoint (EMAIL-based)
+    // Submit PR using Vendor Email
     @PostMapping("/submit/email")
-    public String submitPRByEmail(@RequestParam String email) {
+    public String submitPRByEmail(@RequestParam String email,
+                                  @RequestBody ProcurementRequest pr) {
 
-        ProcurementRequest pr = new ProcurementRequest();
-        pr.setId(4002L);
-        pr.setStatus("SUBMITTED");
-
+        //  NO pr.setId()
         procurementService.submitPRByVendorEmail(email, pr);
         return "PR submitted for vendor email: " + email;
     }

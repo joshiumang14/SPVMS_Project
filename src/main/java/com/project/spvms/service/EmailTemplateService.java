@@ -5,15 +5,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailTemplateService {
 
+
     public String prSubmittedTemplate(String vendorName, Long prId) {
         return """
-                Hello %s,
+        Hello %s,
 
-                Your Purchase Request #%d has been successfully submitted.
+        Your PR #%d has been submitted.
 
-                Regards,
-                SPVMS System
-                """.formatted(vendorName, prId);
+        Regards,
+        SPVMS
+        """.formatted(vendorName, prId);
     }
 
     public String prApprovedTemplate(Long prId) {

@@ -8,22 +8,20 @@ import java.time.LocalDateTime;
 public class ProcurementRequest {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) //  DB generates ID
     private Long id;
 
     private String itemName;
     private int quantity;
+    private Double totalCost;
+    private String costCenter;
 
-    private Double totalCost;     //  Sprint 5
-    private String costCenter;    //  Sprint 5
-
-    private String status;        // SUBMITTED / APPROVED
+    private String status;
     private LocalDateTime createdAt;
 
     // ===== getters & setters =====
-
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public void setId(Long id) { this.id = id; } //  JPA use karega, controller nahi
 
     public String getItemName() { return itemName; }
     public void setItemName(String itemName) { this.itemName = itemName; }

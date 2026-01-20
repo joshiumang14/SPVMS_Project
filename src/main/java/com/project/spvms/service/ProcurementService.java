@@ -1,7 +1,13 @@
 package com.project.spvms.service;
 
-import com.project.spvms.entity.*;
-import com.project.spvms.repository.*;
+import com.project.spvms.entity.ExpenditureSummary;
+import com.project.spvms.entity.FinancialApproval;
+import com.project.spvms.entity.ProcurementRequest;
+import com.project.spvms.entity.Vendor;
+import com.project.spvms.repository.ExpenditureSummaryRepository;
+import com.project.spvms.repository.FinancialApprovalRepository;
+import com.project.spvms.repository.ProcurementRequestRepository;
+import com.project.spvms.repository.VendorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -10,16 +16,11 @@ import java.time.LocalDateTime;
 @Service
 public class ProcurementService {
 
-    // ===== EXISTING DEPENDENCIES =====
     @Autowired
     private VendorRepository vendorRepository;
 
     @Autowired
-    private EmailService emailService;
-
-    // ===== SPRINT 5 DEPENDENCIES (ADDED) =====
-    @Autowired
-    private BudgetService budgetService;
+    private ProcurementRequestRepository procurementRequestRepository;
 
     @Autowired
     private FinancialApprovalRepository financialApprovalRepository;
@@ -27,35 +28,38 @@ public class ProcurementService {
     @Autowired
     private ExpenditureSummaryRepository expenditureSummaryRepository;
 
-    // =========================================================
-    //  EXISTING METHOD (UNCHANGED – ID based submission)
-    // =========================================================
+    @Autowired
+    private BudgetService budgetService;
+
+    @Autowired
+    private EmailService emailService;
+
+    // ================================
+    // SUBMIT PR USING VENDOR ID
+    // ================================
     public void submitPR(Long vendorId, ProcurementRequest pr) {
 
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found"));
 
-        //  Sprint 5: Budget validation
-        budgetService.validateBudget(
-                pr.getCostCenter(),
-                pr.getTotalCost()
-        );
-
         pr.setStatus("SUBMITTED");
         pr.setCreatedAt(LocalDateTime.now());
-        // save PR entity here
 
-        //  Existing email logic (UNCHANGED)
+        // SAVE PR (DB generates ID)
+        ProcurementRequest savedPR =
+                procurementRequestRepository.save(pr);
+
+        // SEND EMAIL with DB ID
         emailService.queuePRSubmittedMail(
                 vendor.getEmail(),
                 vendor.getName(),
-                pr
+                savedPR
         );
     }
 
-    // =========================================================
-    // EXISTING METHOD (UNCHANGED – Email based submission)
-    // =========================================================
+    // ================================
+    // SUBMIT PR USING VENDOR EMAIL
+    // ================================
     public void submitPRByVendorEmail(String email, ProcurementRequest pr) {
 
         Vendor vendor = vendorRepository.findByEmail(email);
@@ -64,31 +68,29 @@ public class ProcurementService {
             throw new RuntimeException("Vendor not found for email: " + email);
         }
 
-        //  Sprint 5: Budget validation
-        budgetService.validateBudget(
-                pr.getCostCenter(),
-                pr.getTotalCost()
-        );
-
         pr.setStatus("SUBMITTED");
         pr.setCreatedAt(LocalDateTime.now());
 
-        //  Existing email logic (UNCHANGED)
+        ProcurementRequest savedPR =
+                procurementRequestRepository.save(pr);
+
         emailService.queuePRSubmittedMail(
                 vendor.getEmail(),
                 vendor.getName(),
-                pr
+                savedPR
         );
     }
 
-    // =========================================================
-    // SPRINT 5: FINANCIAL APPROVAL METHOD (NEW)
-    // =========================================================
+    // ================================
+    //  FINANCE APPROVAL (SPRINT-5)
+    // ================================
     public void approvePR(ProcurementRequest pr, String approver) {
 
+        // 1️ Update PR status
         pr.setStatus("APPROVED");
+        procurementRequestRepository.save(pr);
 
-        //  Log financial approval
+        // 2 Save approval audit
         FinancialApproval approval = new FinancialApproval();
         approval.setPrId(pr.getId());
         approval.setApprovedBy(approver);
@@ -97,7 +99,7 @@ public class ProcurementService {
 
         financialApprovalRepository.save(approval);
 
-        //  Update expenditure summary
+        // 3 Update expenditure summary
         ExpenditureSummary summary =
                 expenditureSummaryRepository
                         .findByCostCenter(pr.getCostCenter())
@@ -112,7 +114,7 @@ public class ProcurementService {
 
         expenditureSummaryRepository.save(summary);
 
-        //  Update utilized budget
+        // 4 Update utilized budget
         budgetService.updateUtilizedAmount(
                 pr.getCostCenter(),
                 pr.getTotalCost()
