@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Procurement Request Submitted</title>
+</head>
+<body>
+<p>Dear <strong th:text="${vendorName}">Vendor</strong>,</p>
+
+<p>
+    A new <strong>Procurement Request</strong> has been submitted.
+</p>
+
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <td><strong>PR ID</strong></td>
+        <td th:text="${prId}"></td>
+    </tr>
+    <tr>
+        <td><strong>Status</strong></td>
+        <td th:text="${status}"></td>
+    </tr>
+    <tr>
+        <td><strong>Submitted Date</strong></td>
+        <td th:text="${date}"></td>
+    </tr>
+</table>
+
+<p>Please log in to the SPVMS portal for details.</p>
+
+<p>Regards,<br/>SPVMS Team</p>
+</body>
+</html>
