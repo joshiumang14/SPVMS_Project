@@ -18,7 +18,14 @@ public class EmailLog {
     private String status; // SUCCESS / FAILED
     private int retryCount;
 
+    @Column(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.sentAt = LocalDateTime.now();
+    }
+
 
     // getters & setters
     public Long getId() { return id; }

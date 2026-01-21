@@ -10,4 +10,6 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
     List<EmailLog> findByStatusAndRetryCountLessThan(
             String status, int retryCount
     );
+
+
 }
