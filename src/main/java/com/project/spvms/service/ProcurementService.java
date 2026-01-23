@@ -8,7 +8,9 @@ import com.project.spvms.repository.ExpenditureSummaryRepository;
 import com.project.spvms.repository.FinancialApprovalRepository;
 import com.project.spvms.repository.ProcurementRequestRepository;
 import com.project.spvms.repository.VendorRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,32 +36,16 @@ public class ProcurementService {
     @Autowired
     private EmailService emailService;
 
-    // ================================
-    // SUBMIT PR USING VENDOR ID
-    // ================================
+    // Submit PR using vendor ID
     public void submitPR(Long vendorId, ProcurementRequest pr) {
 
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found"));
 
-        pr.setStatus("SUBMITTED");
-        pr.setCreatedAt(LocalDateTime.now());
-
-        // SAVE PR (DB generates ID)
-        ProcurementRequest savedPR =
-                procurementRequestRepository.save(pr);
-
-        // SEND EMAIL with DB ID
-        emailService.queuePRSubmittedMail(
-                vendor.getEmail(),
-                vendor.getName(),
-                savedPR
-        );
+        processPR(vendor, pr);
     }
 
-    // ================================
-    // SUBMIT PR USING VENDOR EMAIL
-    // ================================
+    // Submit PR using vendor email
     public void submitPRByVendorEmail(String email, ProcurementRequest pr) {
 
         Vendor vendor = vendorRepository.findByEmail(email);
@@ -68,38 +54,107 @@ public class ProcurementService {
             throw new RuntimeException("Vendor not found for email: " + email);
         }
 
-        pr.setStatus("SUBMITTED");
-        pr.setCreatedAt(LocalDateTime.now());
+        processPR(vendor, pr);
+    }
 
-        ProcurementRequest savedPR =
-                procurementRequestRepository.save(pr);
+    // Core PR processing logic
+    private void processPR(Vendor vendor, ProcurementRequest pr) {
 
+        // FIXED: vendor-scoped deterministic hash
+        // Same vendor + same JSON -> same hash
+        // Different vendor + same JSON -> different hash
+        String requestHash = generateRequestHash(vendor, pr);
+
+        ProcurementRequest finalPR;
+
+        try {
+            // Idempotency check
+            finalPR =
+                    procurementRequestRepository
+                            .findByVendorAndRequestHash(vendor, requestHash)
+                            .orElseGet(() -> {
+                                // Create new PR only if not found
+                                pr.setVendor(vendor);
+                                pr.setStatus("SUBMITTED");
+                                pr.setCreatedAt(LocalDateTime.now());
+                                pr.setRequestHash(requestHash);
+                                return procurementRequestRepository.save(pr);
+                            });
+        } catch (DataIntegrityViolationException ex) {
+            // Handles race condition (parallel requests)
+            // Fetch already-created PR instead of failing
+            finalPR =
+                    procurementRequestRepository
+                            .findByVendorAndRequestHash(vendor, requestHash)
+                            .orElseThrow(() ->
+                                    new RuntimeException("Failed to safely process procurement request")
+                            );
+        }
+
+        // Always send mail with correct PR ID
         emailService.queuePRSubmittedMail(
                 vendor.getEmail(),
                 vendor.getName(),
-                savedPR
+                finalPR
         );
     }
 
-    // ================================
-    //  FINANCE APPROVAL (SPRINT-5)
-    // ================================
+    // FIXED Hash generator
+    // vendor-scoped idempotency key
+    // Same vendor + same JSON -> same hash
+    // Different vendor + same JSON -> different hash
+    private String generateRequestHash(Vendor vendor, ProcurementRequest pr) {
+
+        if (pr.getItemName() == null ||
+                pr.getCostCenter() == null ||
+                pr.getTotalCost() == null) {
+
+            throw new RuntimeException(
+                    "Invalid PR data: itemName, costCenter, and totalCost are required"
+            );
+        }
+
+        // FIX: vendor is now part of hash source
+        String raw =
+                vendor.getId() + "|" +                          // vendor scoping
+                        pr.getItemName().trim().toLowerCase() + "|" +
+                        pr.getCostCenter().trim().toLowerCase() + "|" +
+                        pr.getStatus() + "|" +
+                        pr.getQuantity() + "|" +
+                        pr.getTotalCost();
+
+        try {
+            java.security.MessageDigest digest =
+                    java.security.MessageDigest.getInstance("SHA-256");
+
+            byte[] hashBytes = digest.digest(
+                    raw.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+            );
+
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate request hash", e);
+        }
+    }
+
+    // Finance approval logic (Sprint 5) - unchanged
     public void approvePR(ProcurementRequest pr, String approver) {
 
-        // 1️ Update PR status
         pr.setStatus("APPROVED");
         procurementRequestRepository.save(pr);
 
-        // 2 Save approval audit
         FinancialApproval approval = new FinancialApproval();
         approval.setPrId(pr.getId());
         approval.setApprovedBy(approver);
         approval.setApprovedAmount(pr.getTotalCost());
         approval.setApprovedAt(LocalDateTime.now());
-
         financialApprovalRepository.save(approval);
 
-        // 3 Update expenditure summary
         ExpenditureSummary summary =
                 expenditureSummaryRepository
                         .findByCostCenter(pr.getCostCenter())
@@ -111,10 +166,8 @@ public class ProcurementService {
                         + pr.getTotalCost()
         );
         summary.setLastUpdated(LocalDateTime.now());
-
         expenditureSummaryRepository.save(summary);
 
-        // 4 Update utilized budget
         budgetService.updateUtilizedAmount(
                 pr.getCostCenter(),
                 pr.getTotalCost()

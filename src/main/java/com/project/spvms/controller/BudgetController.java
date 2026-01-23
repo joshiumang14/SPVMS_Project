@@ -15,13 +15,13 @@ public class BudgetController {
     @Autowired
     private BudgetRepository budgetRepository;
 
-    // 🔹 CREATE budget (Postman)
+    //  CREATE budget (Postman)
     @PostMapping
     public Budget createBudget(@RequestBody Budget budget) {
         return budgetRepository.save(budget);
     }
 
-    // 🔹 GET all budgets
+    //  GET all budgets
     @GetMapping
     public List<Budget> getAllBudgets() {
         return budgetRepository.findAll();

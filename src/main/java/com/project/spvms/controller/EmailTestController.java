@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/test-email")
+//@RestController
+//@RequestMapping("/api/test-email")
 public class EmailTestController {
 
     @Autowired
@@ -17,11 +17,13 @@ public class EmailTestController {
     @GetMapping
     public String testEmail() {
 
-        Long vendorId = 1L; // 🔹 change vendor ID to test different vendors
+        Long vendorId = 1L;
 
         ProcurementRequest pr = new ProcurementRequest();
-        pr.setId(4001L);
-        pr.setStatus("SUBMITTED");
+        pr.setItemName("Test Item");
+        pr.setQuantity(1);
+        pr.setTotalCost(100.0);
+        pr.setCostCenter("IT-OPS");
 
         procurementService.submitPR(vendorId, pr);
 

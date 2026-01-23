@@ -12,23 +12,27 @@ public class ProcurementController {
     @Autowired
     private ProcurementService procurementService;
 
-    //  Submit PR using Vendor ID
+    // Submit PR using vendor ID
     @PostMapping("/submit/{vendorId}")
-    public String submitPR(@PathVariable Long vendorId,
-                           @RequestBody ProcurementRequest pr) {
-
-        //  NO pr.setId()
+    public String submitPR(
+            @PathVariable Long vendorId,
+            @RequestBody ProcurementRequest pr
+    ) {
+        if (pr.getItemName() == null || pr.getCostCenter() == null) {
+            throw new RuntimeException("Invalid request body");
+        }
         procurementService.submitPR(vendorId, pr);
         return "PR submitted using vendor ID";
     }
 
-    // Submit PR using Vendor Email
-    @PostMapping("/submit/email")
-    public String submitPRByEmail(@RequestParam String email,
-                                  @RequestBody ProcurementRequest pr) {
 
-        //  NO pr.setId()
+    // Submit PR using vendor email
+    @PostMapping("/submit/email")
+    public String submitPRByEmail(
+            @RequestParam String email,
+            @RequestBody ProcurementRequest pr
+    ) {
         procurementService.submitPRByVendorEmail(email, pr);
-        return "PR submitted for vendor email: " + email;
+        return "PR submitted using vendor email";
     }
 }
