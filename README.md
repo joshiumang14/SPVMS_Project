@@ -1,6 +1,3 @@
-Below is a professional README.md template suitable for your SPVMS project.
-You can copy and paste this into your README.md file and modify details where necessary.
-
 Smart Procurement & Vendor Management System (SPVMS)
 Overview
 
